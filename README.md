@@ -55,7 +55,7 @@ polychrome decoraties en is een van de oudste nog bestaande bedrijven in Nederla
 
 1. **Setup Environment**:
    ```bash
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\\Scripts\\activate
    pip install -r requirements.txt
    echo "CLAUDE_API_KEY=your_key_here" > .env

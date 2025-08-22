@@ -68,28 +68,38 @@ ANALYSEER DE AFBEELDING ZEER GEDETAILLEERD:
 - Welke emotie of sfeer roept de afbeelding op?
 """ if image_data else "Geen afbeelding beschikbaar - focus op tekstuele beschrijving."
         
+        # Extract detailed lot information for the prompt
+        artist_info = ""
+        title_parts = lot.title.split(",") if lot.title else []
+        if len(title_parts) >= 2:
+            artist_info = f"- **Kunstenaar:** {title_parts[0].strip()}\n"
+        
         prompt_text = f"""
-Voer diepgaand onderzoek uit naar dit veilingkavel voor een SOCIAL MEDIA POST.
+Voer diepgaand onderzoek uit naar dit specifieke veilingkavel voor een SOCIAL MEDIA POST.
 
-**KAVELGEGEVENS:**
-- **Titel:** {lot.title}
-- **Omschrijving:** {lot.description}
+**EXACTE KAVELGEGEVENS:**
+{artist_info}- **Volledige Titel:** {lot.title}
+- **Omschrijving/Afmetingen:** {lot.description}
+- **Kavel UUID:** {lot.lot_id}
+
+**BELANGRIJKE INSTRUCTIE:** 
+Gebruik ALLEEN de bovenstaande EXACTE gegevens. Dit is geen generieke analyse - dit gaat over dit SPECIFIEKE kunstwerk met deze SPECIFIEKE kunstenaar, titel en details.
 
 **VISUELE ANALYSE INSTRUCTIE:**
 {vision_instruction}
 
 **ONDERZOEKSTAKEN:**
-Creëer een **perfect valide JSON-object** met deze Nederlandse sleutels:
+Creëer een **perfect valide JSON-object** met deze Nederlandse sleutels. Baseer je antwoorden UITSLUITEND op de exacte kavelgegevens hierboven:
 
-- `historische_significantie`: De historische achtergrond, periode, maker/ontwerper (max 2 zinnen)
-- `culturele_context`: Maatschappelijke context en gebruik in die tijd (max 2 zinnen)  
-- `vakmanschap_details`: Specifieke materialen, technieken, kwaliteitsindicatoren (max 2 zinnen)
-- `marktpotentieel`: Waarom dit nu interessant is voor verzamelaars (max 2 zinnen)
-- `visuele_analyse`: ZEER GEDETAILLEERD wat je in de afbeelding ziet - kleuren, staat, sfeer, details (max 3 zinnen)
-- `storytelling_hooks`: Array van 2-3 boeiende verhaallijnen/anekdotes over dit object
-- `lifestyle_scenario`: Hoe zou een moderne eigenaar dit object gebruiken/presenteren? (max 2 zinnen)
+- `historische_significantie`: Specifieke informatie over deze kunstenaar en dit exacte werk, gebaseerd op de titel en jaar (max 2 zinnen)
+- `culturele_context`: Context specifiek voor dit medium (zeefdruk/grafiek) en deze kunstenaar (max 2 zinnen)  
+- `vakmanschap_details`: Details over de zeefdruk techniek en editie-informatie zoals genoemd in de titel (max 2 zinnen)
+- `marktpotentieel`: Waarom dit specifieke werk van deze kunstenaar interessant is (max 2 zinnen)
+- `visuele_analyse`: ZEER GEDETAILLEERD wat je in de afbeelding ziet - kleuren, compositie, stijl (max 3 zinnen)
+- `storytelling_hooks`: Array van 2-3 verhalen specifiek over dit werk of de kunstenaar
+- `lifestyle_scenario`: Hoe past dit specifieke grafische werk in een modern interieur (max 2 zinnen)
 
-Focus op SPECIFIEKE, VISUELE en EMOTIONELE details die perfect zijn voor social media.
+VERBODEN: Generieke uitspraken over "modern abstract art" of verwijzingen naar andere kunstenaars tenzij relevant voor dit specifieke werk.
 """
 
         messages = [{
@@ -205,12 +215,13 @@ class ImageProcessor:
         
         try:
             # Use same headers as API calls for consistency
+            origin_url = os.environ.get("ORIGIN_URL", "https://vendulion.com")
             image_headers = {
-                "Origin": "https://vendulion.com",
-                "Referer": "https://vendulion.com/",
-                "artisio-client-id": "84528469",
-                "artisio-language": "nl",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "origin": origin_url,
+                "referer": f"{origin_url}/",
+                "artisio-client-id": os.environ.get("ARTISIO_CLIENT_ID", "84528469"),
+                "artisio-language": os.environ.get("ARTISIO_LANGUAGE", "nl"),
+                "user-agent": os.environ.get("USER_AGENT_HEADER", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")
             }
             
             # Download with retries
@@ -264,23 +275,100 @@ class ImageProcessor:
 #  API CLIENT & MAIN ORCHESTRATION
 # ==============================================================================
 class PublicAPIClient:
-    BASE_URL = "https://webapp.artisio.co"
-    HEADERS = {
-        "Origin": "https://vendulion.com",
-        "Referer": "https://vendulion.com/",
-        "artisio-client-id": "84528469",
-        "artisio-language": "nl"
-    }
+    def __init__(self):
+        self.BASE_URL = os.environ.get("API_BASE_URL", "https://webapp.artisio.co")
+        origin_url = os.environ.get("ORIGIN_URL", "https://vendulion.com")
+        
+        self.HEADERS = {
+            "accept": os.environ.get("ACCEPT_HEADER", "application/json, text/plain, */*"),
+            "accept-encoding": os.environ.get("ACCEPT_ENCODING_HEADER", "gzip, deflate, br, zstd"),
+            "accept-language": os.environ.get("ACCEPT_LANGUAGE_HEADER", "en-GB,en;q=0.7"),
+            "artisio-client-id": os.environ.get("ARTISIO_CLIENT_ID", "84528469"),
+            "artisio-language": os.environ.get("ARTISIO_LANGUAGE", "nl"),
+            "origin": origin_url,
+            "referer": f"{origin_url}/",
+            "sec-ch-ua": os.environ.get("SEC_CH_UA_HEADER", '"Not;A=Brand";v="99", "Brave";v="139", "Chromium";v="139"'),
+            "sec-ch-ua-mobile": os.environ.get("SEC_CH_UA_MOBILE_HEADER", "?0"),
+            "sec-ch-ua-platform": os.environ.get("SEC_CH_UA_PLATFORM_HEADER", '"macOS"'),
+            "sec-fetch-dest": os.environ.get("SEC_FETCH_DEST_HEADER", "empty"),
+            "sec-fetch-mode": os.environ.get("SEC_FETCH_MODE_HEADER", "cors"),
+            "sec-fetch-site": os.environ.get("SEC_FETCH_SITE_HEADER", "cross-site"),
+            "sec-gpc": os.environ.get("SEC_GPC_HEADER", "1"),
+            "user-agent": os.environ.get("USER_AGENT_HEADER", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")
+        }
     
-    def get_lot_with_auction(self, lot_uuid: str) -> Optional[Tuple[AuctionLot, Auction]]:
-        url = f"{self.BASE_URL}/website/lots/{lot_uuid}"
-        print(f"📡 Ophalen kavelgegevens van: {url}")
+    def get_lot_with_auction(self, uuid: str) -> Optional[Tuple[AuctionLot, Auction]]:
+        # Try as auction first (more common case based on the example)
+        auction_url = f"{self.BASE_URL}{os.environ.get('AUCTION_ENDPOINT', '/website/auctions/timed')}/{uuid}"
+        print(f"📡 Trying auction endpoint: {auction_url}")
         
         try:
-            response = requests.get(url, headers=self.HEADERS, params={"lot_status": "all"}, timeout=15)
-            response.raise_for_status()
-            data = response.json()
+            response = requests.get(auction_url, headers=self.HEADERS, timeout=15)
+            if response.status_code == 200 and response.content:
+                return self._parse_auction_response(response.json(), uuid)
+        except (requests.RequestException, ValueError) as e:
+            print(f"   Auction endpoint failed: {e}")
+        
+        # Try as lot if auction fails
+        lot_url = f"{self.BASE_URL}{os.environ.get('LOT_ENDPOINT', '/website/lots')}/{uuid}"
+        print(f"📡 Trying lot endpoint: {lot_url}")
+        
+        try:
+            response = requests.get(lot_url, headers=self.HEADERS, params={"lot_status": "all"}, timeout=15)
+            if response.status_code == 200:
+                return self._parse_lot_response(response.json())
+        except requests.RequestException:
+            pass
+        
+        print(f"   ❌ Could not find data for UUID {uuid} in either endpoint")
+        return None
+    
+    def _parse_auction_response(self, data: dict, auction_uuid: str) -> Optional[Tuple[AuctionLot, Auction]]:
+        """Parse auction data - for now, return first lot or create placeholder"""
+        try:
+            # Create auction object from auction data
+            pickup_info = "Zie veilinginformatie in Amstelveen"
+            if 'collection_information' in data and data['collection_information'].get('nl'):
+                pickup_info = clean_html(data['collection_information']['nl'])
+            elif 'description' in data and data['description'].get('nl'):
+                pickup_info = clean_html(data['description']['nl'])
+                
+            end_date = None
+            if data.get('auction_dates') and data['auction_dates'][0].get('end_date'):
+                end_date = datetime.fromisoformat(data['auction_dates'][0]['end_date'].replace('Z', '+00:00'))
+                
+            auction = Auction(
+                auction_id=data.get('uuid'),
+                title=clean_html(data.get('title', {}).get('nl', 'Veiling niet beschikbaar')),
+                end_date=end_date,
+                pickup_info=pickup_info
+            )
             
+            # Create a placeholder lot representing the entire auction
+            lot = AuctionLot(
+                lot_id=auction_uuid,
+                title=f"Veiling: {auction.title}",
+                description=clean_html(data.get('description', {}).get('nl', '')),
+                image_urls=[
+                    (img.get('lg', {}).get('url') if isinstance(img.get('lg'), dict) else img.get('lg')) or
+                    (img.get('original', {}).get('url') if isinstance(img.get('original'), dict) else img.get('original')) or
+                    (img.get('xlg', {}).get('url') if isinstance(img.get('xlg'), dict) else img.get('xlg'))
+                    for img in data.get('images', [])
+                    if (img.get('lg') and (img.get('lg', {}).get('url') if isinstance(img.get('lg'), dict) else img.get('lg'))) or
+                       (img.get('original') and (img.get('original', {}).get('url') if isinstance(img.get('original'), dict) else img.get('original'))) or
+                       (img.get('xlg') and (img.get('xlg', {}).get('url') if isinstance(img.get('xlg'), dict) else img.get('xlg')))
+                ]
+            )
+            
+            return lot, auction
+            
+        except (KeyError, IndexError) as e:
+            print(f"   ❌ Fout bij parsen auction data: {e}")
+            return None
+    
+    def _parse_lot_response(self, data: dict) -> Optional[Tuple[AuctionLot, Auction]]:
+        """Parse individual lot data"""
+        try:
             lot_data, auction_data = data, data.get('auction', {})
             
             lot = AuctionLot(
@@ -315,12 +403,9 @@ class PublicAPIClient:
             
             return lot, auction
             
-        except requests.RequestException as e:
-            print(f"   ❌ API-verzoek mislukt: {e}")
         except (KeyError, IndexError) as e:
-            print(f"   ❌ Fout bij parsen: {e}")
-        
-        return None
+            print(f"   ❌ Fout bij parsen lot data: {e}")
+            return None
 
 class OptimizedSocialAutomation:
     def __init__(self, claude_api_key: str, output_dir: str = "posts"):
