@@ -117,10 +117,10 @@ class ResearchContext:
 #  ENHANCED MULTI-MODAL RESEARCHER
 # ==============================================================================
 class EnhancedAIResearcher:
-    MODEL_NAME = "claude-3-5-sonnet-20240620"
     def __init__(self, claude_api_key: str, cost_analyzer: CostAnalyzer = None):
         self.client = anthropic.Anthropic(api_key=claude_api_key)
         self.cost_analyzer = cost_analyzer or CostAnalyzer()
+        self.model_name = os.environ.get("RESEARCH_MODEL", "claude-3-5-sonnet-20241022")
 
     def research_item(self, lot: AuctionLot, primary_image: Optional[Dict] = None, all_images: List[Dict] = None) -> ResearchContext:
         print(f"🔬 Enhanced Multi-Modal Research for: {lot.title}")
@@ -199,7 +199,7 @@ VERBODEN: Generieke uitspraken over "modern abstract art" of verwijzingen naar a
 
         try:
             response = self.client.messages.create(
-                model=self.MODEL_NAME, max_tokens=2500, temperature=0.4,
+                model=self.model_name, max_tokens=2500, temperature=0.4,
                 system="Je bent een expert veilingspecialist die boeiende social media content creëert. Focus op visuele details, verhalen en lifestyle aspecten die het object tot leven brengen.",
                 messages=messages
             )
@@ -248,7 +248,7 @@ Vermijd herhaling van informatie uit de hoofdafbeelding.
 
         try:
             response = self.client.messages.create(
-                model=self.MODEL_NAME, max_tokens=800, temperature=0.3,
+                model=self.model_name, max_tokens=800, temperature=0.3,
                 system="Je bent een expert die extra visuele details extraheert uit aanvullende afbeeldingen. Wees beknopt en specifiek.",
                 messages=messages
             )
@@ -280,7 +280,7 @@ Creëer een **perfect valide JSON-object** met deze Nederlandse sleutels:
 
         try:
             response = self.client.messages.create(
-                model=self.MODEL_NAME, max_tokens=2000, temperature=0.4,
+                model=self.model_name, max_tokens=2000, temperature=0.4,
                 system="Je bent een expert veilingspecialist die boeiende social media content creëert op basis van tekstuele informatie.",
                 messages=[{"role": "user", "content": prompt_text}]
             )
@@ -371,7 +371,7 @@ Focus op SPECIFIEKE, VISUELE en EMOTIONELE details die perfect zijn voor social 
 
         try:
             response = self.client.messages.create(
-                model=self.MODEL_NAME, 
+                model=self.model_name, 
                 max_tokens=2500, 
                 temperature=0.4,
                 system="Je bent een expert veilingspecialist die boeiende social media content creëert. Focus op visuele details, verhalen en lifestyle aspecten die het object tot leven brengen.",
@@ -382,7 +382,7 @@ Focus op SPECIFIEKE, VISUELE en EMOTIONELE details die perfect zijn voor social 
             usage = response.usage
             if usage:
                 cost_estimate = self.cost_analyzer.track_actual_usage(
-                    self.MODEL_NAME, usage.input_tokens, usage.output_tokens, research_level.value
+                    self.model_name, usage.input_tokens, usage.output_tokens, research_level.value
                 )
                 print(f"   💰 Cost: ${cost_estimate.total_cost:.4f} ({usage.input_tokens + usage.output_tokens:,} tokens)")
             
@@ -416,10 +416,10 @@ Focus op SPECIFIEKE, VISUELE en EMOTIONELE details die perfect zijn voor social 
 #  DIRECT CONTENT GENERATOR (FACT-FIRST)
 # ==============================================================================
 class DirectContentGenerator:
-    MODEL_NAME = "claude-3-5-sonnet-20240620"
     def __init__(self, claude_api_key: str, cost_analyzer: CostAnalyzer = None):
         self.client = anthropic.Anthropic(api_key=claude_api_key)
         self.cost_analyzer = cost_analyzer
+        self.model_name = os.environ.get("CONTENT_MODEL", "claude-3-5-sonnet-20241022")
 
     def generate_post(self, research: ResearchContext, lot: AuctionLot, auction: Auction) -> str:
         print(f"✍️  Direct post generation using enhanced research...")
@@ -427,7 +427,7 @@ class DirectContentGenerator:
         
         try:
             response = self.client.messages.create(
-                model=self.MODEL_NAME, max_tokens=1200, temperature=0.6,
+                model=self.model_name, max_tokens=1200, temperature=0.6,
                 system="Je bent een briljante social media copywriter voor een luxe veilinghuis. Schrijf boeiende, emotionele posts die het object tot leven brengen. Gebruik de toon en structuur van de succesvolle voorbeelden.",
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -435,7 +435,7 @@ class DirectContentGenerator:
             # Track costs if cost analyzer is available
             if self.cost_analyzer and response.usage:
                 cost_estimate = self.cost_analyzer.track_actual_usage(
-                    self.MODEL_NAME, response.usage.input_tokens, response.usage.output_tokens, "content_generation"
+                    self.model_name, response.usage.input_tokens, response.usage.output_tokens, "content_generation"
                 )
                 print(f"   💰 Content generation cost: ${cost_estimate.total_cost:.4f} ({response.usage.input_tokens + response.usage.output_tokens:,} tokens)")
             
